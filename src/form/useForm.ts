@@ -2,8 +2,6 @@ import React from "react";
 
 const useForm = () => {
   const inputRefs = React.useRef({});
-  const formDataRef = React.useRef({});
-
   const watchRef = React.useRef({});
 
   const [, setChangeState] = React.useState(false);
@@ -21,18 +19,13 @@ const useForm = () => {
           delete watchRef.current[e.target.name];
         }
 
-        formDataRef.current[element.name] = e.target.value;
       });
     } else {
-      formDataRef.current[element.name] = element.value;
-
       element.addEventListener("change", (e) => {
         if (watchRef.current[e.target.name]) {
           setChangeState((prev) => !prev);
           delete watchRef.current[e.target.name];
         }
-
-        formDataRef.current[element.name] = e.target.value;
       });
     }
   };
@@ -53,10 +46,10 @@ const useForm = () => {
     if (typeof arg === "string") {
       watchRef.current[arg] = true;
 
-      return formDataRef.current[arg];
+      return inputRefs.current[arg]?.current.value;
     }
     if (typeof arg === "undefined") {
-      Object.keys(formDataRef.current).forEach((item) => {
+      Object.keys(inputRefs.current).forEach((item) => {
         watchRef.current[item] = true;
         return watchRef.current;
       });
@@ -64,7 +57,9 @@ const useForm = () => {
     if (Array.isArray(arg)) {
       return arg.reduce((acc, name) => {
         watchRef.current[name] = true;
-        acc[name] = formDataRef.current[name];
+        if (inputRefs.current[name]) {
+          acc[name] = inputRefs.current[name].current.value;
+        }
 
         return acc;
       }, {});
@@ -73,7 +68,7 @@ const useForm = () => {
 
   const setValue = (name, value) => {
     inputRefs.current[name].current.value = value;
-    formDataRef.current[name] = value;
+    inputRefs.current[name].value = value;
     if (watchRef.current[name]) {
       setChangeState((prev) => !prev);
       delete watchRef.current[name];
@@ -90,8 +85,7 @@ const useForm = () => {
         arg && arg[element.current.name] ? arg[element.current.name] : null;
 
       element.current.value = newValue;
-      formDataRef.current[element.current.name] = newValue;
-      
+
       if (watchRef.current[element.current.name]) {
         setChangeState((prev) => !prev);
         delete watchRef.current[element.current.name];
@@ -103,7 +97,14 @@ const useForm = () => {
     return {
       onSubmit: (e) => {
         e.preventDefault();
-        callback(formDataRef.current);
+        const formData = Object.entries(inputRefs.current).reduce(
+          (acc, [key, value]) => {
+            acc[key] = value.current.value;
+            return acc;
+          },
+          {}
+        );
+        callback(formData);
       },
     };
   };
